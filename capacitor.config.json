@@ -1,0 +1,10 @@
+{
+  "appId": "com.kalvimurasu.nmms",
+  "appName": "Kalvimurasu",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

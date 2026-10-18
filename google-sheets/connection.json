@@ -1,0 +1,26 @@
+{
+  "spreadsheetId": "1KnndwSFjBE9wND0EkfdeMMMIV5RZaoVX-EplY1fd6kI",
+  "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1KnndwSFjBE9wND0EkfdeMMMIV5RZaoVX-EplY1fd6kI/edit",
+  "deploymentStatus": "url_configured_live_verification_pending",
+  "feedUrl": "https://script.google.com/macros/s/AKfycbxqqzeO4pR1F28TYKPbCTZyHgbc19umApm5P8kRf6G_oIASNo58JoJEn_zWMVJs_m3a/exec",
+  "questionCounts": {
+    "Science": 5602,
+    "Mathematics": 3536,
+    "Social Science": 5562,
+    "MAT": 5300
+  },
+  "verification": {
+    "appChecks": "passed_including_first_launch_sync_with_mock_feed",
+    "liveDownload": "not_verified",
+    "reason": "Execution environment cannot resolve script.google.com; web fetcher cannot access this deployment."
+  },
+  "studentTracking": {
+    "studentsTab": "_Students",
+    "progressTab": "_Progress",
+    "sheetSharingVerified": "owner_only",
+    "serverDeployment": "awaiting_doPost_upgrade",
+    "appVersion": "1.1",
+    "apkBuild": "built_and_signature_verified",
+    "tests": "passed_app_outbox_and_backend_mock_tests"
+  }
+}
