@@ -81,3 +81,9 @@ Vercel serves this repository as a static site; the root page opens `nmms-pwa/`.
 The website, iPhone PWA, and Android app use the same configured Google Sheets question feed. Sheet rows sync on launch, resume, reconnect, and every five minutes while open. Student details and saved progress belong to each installation; they do not transfer between devices.
 
 Website code changes require a new Vercel deployment. The PWA checks for a new version when reopened, reconnected, and every five minutes while visible. Choose **Update now** when the banner appears; current answers are saved before reloading. Closing all website/PWA windows also allows a waiting version to activate. `vercel.json` prevents HTTP caching of the service worker; change the version in `nmms-pwa/sw.js` whenever bundled assets change. Android code updates require rebuilding and reinstalling the APK; Sheet question updates do not.
+
+## Website APK download
+
+Home, Profile, and the welcome page offer `/downloads/Kalvimurasu-NMMS-v1.2.apk` (Android v1.2, version code 3). This is a signed debug/test build for direct installation, with 25,000 bundled questions and the current design. The APK is served as a static attachment by Vercel and is excluded from PWA offline pre-caching. iPhone users use Safari → Share → Add to Home Screen.
+
+For future APK updates: increment Android versionCode/versionName, sync and build the app, verify the signed APK and bundled assets, copy it into `downloads/` under a new versioned filename, then update the download card and matching Vercel header. Keep the same signing certificate so existing installations can upgrade.
