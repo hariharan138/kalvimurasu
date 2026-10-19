@@ -1,6 +1,6 @@
 # Kalvimurasu NMMS mobile app
 
-Android app built with Capacitor 8 around the existing Tamil/English practice app. All 20,000 questions and illustrations are bundled for offline use from the first launch. The existing browser/PWA version remains in `nmms-pwa/`.
+Android app built with Capacitor 8 around the existing Tamil/English practice app. All 25,000 questions and illustrations are bundled for offline use from the first launch. The existing browser/PWA version remains in `nmms-pwa/`.
 
 ## Run on Android
 
@@ -73,3 +73,11 @@ The teacher sheet has `_Students` (student details, completed practices/sets, an
 The endpoint accepts anonymous, self-reported app results. It is appropriate for practice monitoring, not verified exam scoring. The outbox holds up to 1,000 pending records and reports storage/sync errors rather than discarding them silently. The app must be running or reopened to sync; it does not upload while fully closed.
 
 After changing `google-sheets/Code.gs`, update the same Google Apps Script deployment to a New version before expecting tracking uploads to work. The app queues records until that server upgrade is available.
+
+## Vercel website and iPhone PWA
+
+Vercel serves this repository as a static site; the root page opens `nmms-pwa/`. Deploy the updated repository to your existing Vercel project. No separate iPhone build is needed. Open the deployed HTTPS website in Safari, choose Share → Add to Home Screen, and open the installed icon. Keep the app online until Profile reports that offline practice is ready.
+
+The website, iPhone PWA, and Android app use the same configured Google Sheets question feed. Sheet rows sync on launch, resume, reconnect, and every five minutes while open. Student details and saved progress belong to each installation; they do not transfer between devices.
+
+Website code changes require a new Vercel deployment. The PWA checks for a new version when reopened, reconnected, and every five minutes while visible. Choose **Update now** when the banner appears; current answers are saved before reloading. Closing all website/PWA windows also allows a waiting version to activate. `vercel.json` prevents HTTP caching of the service worker; change the version in `nmms-pwa/sw.js` whenever bundled assets change. Android code updates require rebuilding and reinstalling the APK; Sheet question updates do not.

@@ -36,7 +36,7 @@ function boot(storage = new Map(), options = {}) {
 }
 function check() {
 const app = boot(), {run,elements,storage,tones}=app;
-assert.equal(run('questions.length'),20000);
+assert.equal(run('questions.length'),25000);
 assert.equal(run('offlineReady'),true);
 assert(elements.get('#app').innerHTML.includes('Today’s practice'));
 for(const subject of ['Science','Social Science','Mathematics','MAT']) {
@@ -101,7 +101,7 @@ assert(restored.elements.get('#app').innerHTML.includes('விடை ஒலி�
 const invalid = JSON.parse(storage.get('kalvimurasu-v2'));
 invalid.attempt={set:1,type:'ALL',indices:[999],answers:[null],index:0,started:1,deadline:Date.now()+60000};
 invalid.history=[{set:1,type:'ALL',total:25,score:1,date:Date.now(),answers:[]}];
-invalid.completedSets=[1,0,801,'bad'];
+invalid.completedSets=[1,0,1001,'bad'];
 const safe=boot(new Map([['kalvimurasu-v2',JSON.stringify(invalid)]]));
 assert.equal(safe.run('attempt'),null);
 assert.equal(safe.run('history.length'),0);

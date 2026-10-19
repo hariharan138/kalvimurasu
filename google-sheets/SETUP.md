@@ -1,10 +1,10 @@
 # Your prepared question bank
 
-Your Google Sheet has already been created and populated with the app's 20,000 questions:
+Your Google Sheet has already been created and populated with the app's 25,000 questions:
 
 https://docs.google.com/spreadsheets/d/1KnndwSFjBE9wND0EkfdeMMMIV5RZaoVX-EplY1fd6kI/edit
 
-Tabs: Science (5,602), Mathematics (3,536), Social Science (5,562), MAT (5,300). IDs and Tamil/English columns are populated. Answers, section, and enabled fields have dropdowns. You can edit rows immediately.
+Tabs: Science (5,602), Mathematics (8,536), Social Science (5,562), MAT (5,300). IDs and Tamil/English columns are populated. Answers, section, and enabled fields have dropdowns. You can edit rows immediately.
 
 **Your Apps Script deployment URL is now configured in the app.** New installs automatically attempt to download from it when online. Rebuild and run the Android app, then check Profile → Google Sheets questions for sync status. Use Sync now to retry. The Google endpoint could not be reached from this execution environment, so its public access and full response still need a real-device check.
 
@@ -63,7 +63,7 @@ To pre-connect **all new installs**, paste the same URL into [`nmms-pwa/sheet-co
 window.NMMS_SHEET_ENDPOINT = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
 ```
 
-Then run `npm run sync:android` and rebuild the app. Each new install downloads the sheet when it first has internet; until then the existing 20,000 bundled questions remain available. A device already connected through Profile keeps its selected feed. Never paste a password or access token into this file.
+Then run `npm run sync:android` and rebuild the app. Each new install downloads the sheet when it first has internet; until then the existing 25,000 bundled questions remain available. A device already connected through Profile keeps its selected feed. Never paste a password or access token into this file.
 
 ## 4. Add or edit questions whenever you like
 
