@@ -95,3 +95,18 @@
 @media(prefers-reduced-motion:reduce){.history-list .subject-row{transition:none}}
 
 .android-download{display:flex;align-items:flex-start;gap:18px;margin:0 0 28px;padding:24px;border:1px solid #c7d2fe;border-radius:24px;background:linear-gradient(120deg,#eef2ff,#f0fdfa)}.android-download>div{flex:1;min-width:0}.android-download h2{font-size:20px;color:#312e81;margin:0 0 8px}.android-download p{font-size:12px;color:#475569;margin:0 0 16px;line-height:1.7}.android-download a{text-decoration:none;background:#4338ca}.android-download a:hover{background:#3730a3}.android-download .download-help{font-size:11px;margin:14px 0 0}.onboarding-card+.android-download{max-width:680px;margin:24px auto}.settings-list>.android-download{margin:0}@media(max-width:650px){.android-download{padding:20px;gap:12px}.android-download>.subject-icon{display:none}.android-download h2{font-size:18px}.android-download a{width:100%}}
+
+/* NMMS Spark identity and readable mobile practice controls. */
+.brand-logo{display:block;width:112px;height:90px;object-fit:contain;border-radius:10px}
+.today-date{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;margin:18px 44px 0 240px;color:#05204a;font-size:14px;font-weight:600}
+.today-date>span{font-size:12px;color:#4b555e}.today-date time{font-variant-numeric:tabular-nums}
+.history-list .row-copy small{font-size:13px;color:#4b555e}
+@media(max-width:900px){
+.app-header .brand{display:flex;min-width:0;flex-shrink:1}.brand-logo{width:105px;height:78px}
+.today-date{margin:16px 20px 0;justify-content:flex-start;font-size:14px}
+.filter-chips[role="group"]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.filter-chips[role="group"] .chip{min-width:0;min-height:48px;padding:10px 12px;font-size:14px;line-height:1.4;white-space:normal;overflow-wrap:anywhere;border-color:#c5cbc7;background:#fff;color:#25362e}
+.filter-chips[role="group"] .chip.active{background:#05204a;border-color:#05204a;color:#fff;font-weight:650}
+}
+
+@media(min-width:901px) and (max-width:1150px){.today-date{margin-left:190px;margin-right:28px}}
