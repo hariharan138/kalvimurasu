@@ -1,1 +1,24 @@
-{"name":"Kalvimurasu NMMS Practice","short_name":"NMMS","start_url":"./","scope":"./","display":"standalone","orientation":"portrait","background_color":"#faf9f6","theme_color":"#faf9f6","icons":[{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "name": "NMMS Spark — NMMS Practice",
+  "short_name": "NMMS Spark",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#faf9f6",
+  "theme_color": "#faf9f6",
+  "icons": [
+    {
+      "src": "assets/nmms-spark-approved-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/nmms-spark-approved-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

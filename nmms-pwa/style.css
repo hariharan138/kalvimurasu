@@ -110,3 +110,21 @@
 }
 
 @media(min-width:901px) and (max-width:1150px){.today-date{margin-left:190px;margin-right:28px}}
+
+/* Compact Spark lockup: crisp lettering at every screen size. */
+.app-header .brand{gap:11px;flex-shrink:0;letter-spacing:-.7px;color:#05204a}
+.app-header .brand-logo{width:54px;height:54px;object-fit:contain;border-radius:14px}
+.brand-copy{font-size:22px;font-weight:800;white-space:nowrap;line-height:1.1}
+.brand-copy>span{color:#007e79}
+.brand .brand-copy small{font-size:10px;letter-spacing:.4px;font-weight:500;color:#4b555e;margin-top:6px}
+@media(max-width:650px){.app-header .brand{gap:8px}.app-header .brand-logo{width:42px;height:42px;border-radius:11px}.brand-copy{font-size:17px}.brand .brand-copy small{font-size:8px;letter-spacing:.1px;margin-top:5px}}
+@media(max-width:360px){.app-header .brand{gap:6px}.app-header .brand-logo{width:36px;height:36px}.brand-copy{font-size:15px}.brand .brand-copy small{font-size:7px}}
+
+/* Transparent mark has no background tile or corner clipping. */
+.app-header .brand-logo{background:transparent;border-radius:0}
+
+/* Supplied complete logo includes its wordmark and tagline. */
+.app-header .brand-logo{width:150px;height:96px;object-fit:contain;background:transparent;border-radius:0}
+@media(max-width:900px){.app-header .brand-logo{width:130px;height:81px}}
+@media(max-width:650px){.app-header .brand-logo{width:120px;height:84px}}
+@media(max-width:360px){.app-header .brand-logo{width:105px;height:80px}}
