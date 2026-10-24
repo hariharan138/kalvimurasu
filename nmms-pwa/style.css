@@ -127,3 +127,9 @@
 @media(max-width:360px){.app-header .brand{gap:6px}.brand-symbol{width:34px;height:34px}.brand-wordmark{width:116px}}
 
 .student-form [aria-invalid="true"]{border:2px solid #b42318;background:#fff8f7}.student-field-error{color:#9f2018;font-size:13px;line-height:1.5;margin:6px 0 14px}
+
+/* Keep text navigation visible after removing the book symbol. */
+.metric-icon:empty,.mini-icon:empty,.subject-icon:empty{display:none}
+@media(max-width:900px){.nav-item.iconless{width:auto;padding:0 14px;border-radius:40px}.nav-item.iconless span{display:block;font-size:12px}}
+
+@media(max-width:650px){#bottom-nav{gap:4px;padding:6px}.nav-item{width:44px;height:48px}.nav-item.active{padding:0 12px}.nav-item.active span,.nav-item.iconless span{font-size:11px;white-space:nowrap}.nav-item.iconless{width:auto;padding:0 10px}}

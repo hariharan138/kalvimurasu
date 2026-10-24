@@ -7,7 +7,6 @@ let totalSets = bundledSetCount, syncedSets = [];
 let sheetConnection = null, syncBusy = false, syncMessage = null, lastSyncAttempt = 0;
 const icons = {
   home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
-  book:'<path d="M12 5C8 2 3 4 3 4v15s5-2 9 1c4-3 9-1 9-1V4s-5-2-9 1Zm0 0v15"/>',
   chart:'<path d="M4 3v17h17M8 14l4-5 4 3 5-7"/>',
   user:'<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2z"/>',
   arrow:'<path d="M5 12h14m-6-6 6 6-6 6"/>',
@@ -24,7 +23,7 @@ const icons = {
   spark:'<path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/>',
   close:'<path d="m6 6 12 12M6 18 18 6"/>'
 };
-const icon = name => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.book}</svg>`;
+const icon = name => !icons[name] ? '' : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
 const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function readStore() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 const stored = readStore();
@@ -326,7 +325,7 @@ function render() {
   const screens={onboarding:onboardingScreen,home:homeScreen,practice:practiceScreen,quiz:quizScreen,result:resultScreen,progress:progressScreen,profile:profileScreen};
   app.innerHTML=screens[view]();
   const current=view==='quiz'?'practice':view==='result'?'progress':view;
-  nav.innerHTML=[['home','home',t('Home','முகப்பு')],['practice','book',t('Practice','பயிற்சி')],['progress','chart',t('Progress','முன்னேற்றம்')],['profile','user',t('Profile','சுயவிவரம்')]].map(([id,glyph,label])=>`<button data-route="${id}" class="nav-item ${current===id?'active':''}" ${current===id?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span></button>`).join('');
+  nav.innerHTML=[['home','home',t('Home','முகப்பு')],['practice','book',t('Practice','பயிற்சி')],['progress','chart',t('Progress','முன்னேற்றம்')],['profile','user',t('Profile','சுயவிவரம்')]].map(([id,glyph,label])=>`<button data-route="${id}" class="nav-item ${glyph==='book'?'iconless ':''}${current===id?'active':''}" ${current===id?'aria-current="page"':''}>${icon(glyph)}<span>${label}</span></button>`).join('');
   document.querySelector('#header-language').value=lang?'ta':'en';
   document.querySelector('#menu-button').innerHTML=icon('menu');
   document.querySelector('#profile-button').innerHTML=icon('user');
