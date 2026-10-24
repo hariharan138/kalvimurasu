@@ -21,9 +21,34 @@
     if(typeof value!=='string' || value.trim().length>max || (!optional && !value.trim())) throw new Error(label);
     return value.trim();
   }
+  function validateProfile(fields) {
+    fields=fields && typeof fields==='object' ? fields : {};
+    const values={}, errors={};
+    const limits={name:100,school:160,className:20,section:20,rollNumber:40};
+    const messages={
+      name:['Enter a name using letters, spaces, initials, apostrophes or hyphens (up to 100 characters).','பெயரை எழுத்துகள், இடைவெளி, முதலெழுத்துகள் அல்லது இணைப்புக்குறியுடன் உள்ளிடவும் (100 எழுத்துகள் வரை).'],
+      school:['Enter a school name containing letters (up to 160 characters).','எழுத்துகள் உள்ள பள்ளிப் பெயரை உள்ளிடவும் (160 எழுத்துகள் வரை).'],
+      className:['Choose a class from 6 to 12.','6 முதல் 12 வரை ஒரு வகுப்பைத் தேர்ந்தெடுக்கவும்.'],
+      section:['Use letters, numbers, spaces, dots, slashes or hyphens (up to 20 characters).','பிரிவுக்கு எழுத்துகள், எண்கள், இடைவெளி அல்லது . / - பயன்படுத்தவும் (20 எழுத்துகள் வரை).'],
+      rollNumber:['Roll number must be text of up to 40 characters.','பதிவெண் 40 எழுத்துகளுக்குள் இருக்க வேண்டும்.']
+    };
+    for(const [key,max] of Object.entries(limits)) {
+      const raw=fields[key] ?? '';
+      values[key]=typeof raw==='string' ? raw.normalize('NFC').trim().replace(/ +/g,' ') : '';
+      if(typeof raw!=='string' || values[key].length>max || /[\u0000-\u001f\u007f]/.test(values[key])) errors[key]=messages[key];
+    }
+    if(!/\p{L}/u.test(values.name) || !/^[\p{L}\p{M} .’'ʼ-]+$/u.test(values.name)) errors.name=messages.name;
+    if(!/\p{L}/u.test(values.school)) errors.school=messages.school;
+    if(!['6','7','8','9','10','11','12'].includes(values.className)) errors.className=messages.className;
+    if(values.section && !/^[\p{L}\p{M}\p{N} ./-]+$/u.test(values.section)) errors.section=messages.section;
+    return {values,errors};
+  }
   function profile() { try { return read().profile; } catch { return null; } }
   function destination() { return root.SheetBank.endpoint(root.NMMS_PROGRESS_ENDPOINT || root.NMMS_SHEET_ENDPOINT || ''); }
   function saveProfile(fields) {
+    const checked=validateProfile(fields);
+    if(Object.keys(checked.errors).length) { const error=new Error(Object.values(checked.errors)[0][0]);error.fields=checked.errors;throw error; }
+    fields=checked.values;
     const state=read(), now=Date.now();
     const student={id:state.profile?.id || uuid(),name:clean(fields.name,'Enter the student name.',100),school:clean(fields.school,'Enter the school name.',160),className:clean(fields.className,'Choose the class.',20),section:clean(fields.section || '','Section is too long.',20,true),rollNumber:clean(fields.rollNumber || '','Roll number is too long.',40,true),createdAt:state.profile?.createdAt || now,updatedAt:now};
     if(!['6','7','8','9','10','11','12'].includes(student.className)) throw new Error('Choose a class from 6 to 12.');
@@ -79,7 +104,7 @@
     } catch(cause) { error=cause.message || 'Progress could not be uploaded. It will retry.';return false; }
     finally { busy=false;notify(); }
   }
-  const api={profile,saveProfile,enqueueAttempt,status,flush,uuid,onChange:null};
+  const api={profile,validateProfile,saveProfile,enqueueAttempt,status,flush,uuid,onChange:null};
   root.StudentTracking=api;
   if(typeof module!=='undefined') module.exports=api;
 })(typeof window==='undefined'?globalThis:window);

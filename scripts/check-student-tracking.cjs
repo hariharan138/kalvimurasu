@@ -13,10 +13,38 @@ async function main() {
   assert.equal(app.run('attempt'),null,'Student details are required before practice');
   assert.equal(app.run("saveStudent({name:'',school:'School',className:'8'})"),false);
   assert.equal(app.run('view'),'onboarding');
+  const invalidProfiles=[
+    {name:'   ',school:'School',className:'8'},
+    {name:'1234',school:'School',className:'8'},
+    {name:'Student',school:'12345',className:'8'},
+    {name:'Student',school:'School',className:'13'},
+    {name:'Student',school:'School',className:'8',section:'<A>'},
+    {name:'Student',school:'School',className:'8',section:12},
+    {name:'A'.repeat(101),school:'School',className:'8'},
+    {name:'Student',school:'School\nInjected',className:'8'}
+  ];
+  for(const fields of invalidProfiles) {
+    const before=app.storage.get('kalvimurasu-student-v1');
+    assert.equal(app.run(`saveStudent(${JSON.stringify(fields)})`),false);
+    assert.equal(app.storage.get('kalvimurasu-student-v1'),before,'Invalid details must not create identity or queued records');
+    assert(app.elements.get('#app').innerHTML.includes('aria-invalid="true"'));
+    assert.equal(app.run('studentDraft.name'),fields.name,'Retain entered values for correction');
+  }
+  for(const name of ['தமிழ் மாணவி',"O’Connor",'A. Kumar','Jean-Luc','李明']) {
+    assert.equal(app.run(`Object.keys(window.StudentTracking.validateProfile({name:${JSON.stringify(name)},school:'Govt. School 12',className:'8'}).errors).length`),0);
+  }
+  app.run('lang=1');
+  app.run("saveStudent({name:'123',school:'School',className:'8'})");
+  assert(app.elements.get('#app').innerHTML.includes('குறிக்கப்பட்ட விவரங்களைச் சரிபார்க்கவும்.'));
+  app.run('lang=0');
   assert.equal(app.run("saveStudent({name:'A Student',school:'Example School',className:'8',section:'A',rollNumber:'10'})"),true);
   const id=app.run('currentStudent().id');
   assert.equal(app.run('view'),'home');
   assert.equal(readQueue(app).length,1,'Offline registration is queued');
+  for(const [type,set] of [['ALL',0],['ALL',1.5],['ALL',999999],['INVALID',1]]) {
+    app.run(`start(${JSON.stringify(type)},${set})`);
+    assert.equal(app.run('attempt'),null,'Reject invalid practice selections');
+  }
   app.run("start('ALL',1)");app.click({answer:'2'});app.run('finish()');
   assert.equal(readQueue(app).length,2);
   const attemptEvent=readQueue(app)[1];

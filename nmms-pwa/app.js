@@ -29,6 +29,7 @@ const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;'
 function readStore() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 const stored = readStore();
 let lang = stored.lang === 'ta' ? 1 : 0;
+let studentDraft = null, studentFieldErrors = {};
 let studentError = '', editingStudent = false, trackingError = '';
 let view = 'home', activeSet = 1, filter = 'all', reviewFilter = 'all';
 let history = [];
@@ -54,8 +55,10 @@ const setSubject = n => n > bundledSetCount ? syncedSets[n - bundledSetCount - 1
 const setKey = record => record.setKey || record.set;
 function currentStudent() { return window.StudentTracking.profile(); }
 function studentForm(edit = false) {
-  const student=currentStudent();
-  return `<form id="student-form" class="student-form"><label for="student-name">${t('Student name','மாணவர் பெயர்')}</label><input id="student-name" name="name" autocomplete="name" required maxlength="100" value="${escapeHTML(student?.name || '')}"><label for="student-school">${t('School name','பள்ளியின் பெயர்')}</label><input id="student-school" name="school" required maxlength="160" value="${escapeHTML(student?.school || '')}"><div class="student-form-row"><div><label for="student-class">${t('Class','வகுப்பு')}</label><select id="student-class" name="className" required>${['6','7','8','9','10','11','12'].map(n=>`<option value="${n}" ${(student?.className || '8')===n?'selected':''}>${n}</option>`).join('')}</select></div><div><label for="student-section">${t('Section (optional)','பிரிவு (விருப்பம்)')}</label><input id="student-section" name="section" maxlength="20" value="${escapeHTML(student?.section || '')}"></div></div><p class="student-data-note">${t('Your name, school, class, and practice results will be sent to your teacher’s Google Sheet when internet is available. You can start learning offline.','உங்கள் பெயர், பள்ளி, வகுப்பு மற்றும் பயிற்சி முடிவுகள் இணையம் கிடைக்கும்போது ஆசிரியரின் கூகுள் தாளில் சேமிக்கப்படும். இணையமின்றியும் கற்றலைத் தொடங்கலாம்.')}</p>${studentError?`<p role="alert" class="student-error">${escapeHTML(studentError)}</p>`:''}<div class="sync-actions"><button class="primary" type="submit">${edit?t('Save details','விவரங்களைச் சேமி'):t('Save & start learning','சேமித்துக் கற்கத் தொடங்கு')}${icon('arrow')}</button>${edit?`<button type="button" class="secondary" data-cancel-student>${t('Cancel','ரத்து')}</button>`:''}</div></form>`;
+  const student=studentDraft || currentStudent();
+  const errorFor=key=>studentFieldErrors[key] ? `<p id="student-${key}-error" class="student-field-error">${escapeHTML(t(...studentFieldErrors[key]))}</p>` : '';
+  const invalid=key=>studentFieldErrors[key] ? `aria-invalid="true" aria-describedby="student-${key}-error"` : '';
+  return `<form id="student-form" class="student-form" novalidate><label for="student-name">${t('Student name','மாணவர் பெயர்')}</label><input id="student-name" ${invalid('name')} name="name" autocomplete="name" required maxlength="100" value="${escapeHTML(student?.name || '')}">${errorFor('name')}<label for="student-school">${t('School name','பள்ளியின் பெயர்')}</label><input id="student-school" ${invalid('school')} name="school" required maxlength="160" value="${escapeHTML(student?.school || '')}">${errorFor('school')}<div class="student-form-row"><div><label for="student-class">${t('Class','வகுப்பு')}</label><select id="student-class" ${invalid('className')} name="className" required>${['6','7','8','9','10','11','12'].map(n=>`<option value="${n}" ${(student?.className || '8')===n?'selected':''}>${n}</option>`).join('')}</select>${errorFor('className')}</div><div><label for="student-section">${t('Section (optional)','பிரிவு (விருப்பம்)')}</label><input id="student-section" ${invalid('section')} name="section" maxlength="20" value="${escapeHTML(student?.section || '')}">${errorFor('section')}</div></div><p class="student-data-note">${t('Your name, school, class, and practice results will be sent to your teacher’s Google Sheet when internet is available. You can start learning offline.','உங்கள் பெயர், பள்ளி, வகுப்பு மற்றும் பயிற்சி முடிவுகள் இணையம் கிடைக்கும்போது ஆசிரியரின் கூகுள் தாளில் சேமிக்கப்படும். இணையமின்றியும் கற்றலைத் தொடங்கலாம்.')}</p>${studentError?`<p role="alert" class="student-error">${escapeHTML(studentError)}</p>`:''}<div class="sync-actions"><button class="primary" type="submit">${edit?t('Save details','விவரங்களைச் சேமி'):t('Save & start learning','சேமித்துக் கற்கத் தொடங்கு')}${icon('arrow')}</button>${edit?`<button type="button" class="secondary" data-cancel-student>${t('Cancel','ரத்து')}</button>`:''}</div></form>`;
 }
 function androidDownloadCard() {
   if(window.NMMS_NATIVE) return '';
@@ -65,13 +68,18 @@ function onboardingScreen() {
   return `<section class="onboarding-card"><span class="subject-icon mint">${icon('user')}</span><p class="eyebrow">${t('WELCOME TO KALVIMURASU','கல்விமுரசு உங்களை வரவேற்கிறது')}</p><h1>${t('Let’s get to know you.','உங்களை அறிமுகப்படுத்துங்கள்.')}</h1><p>${t('Enter your details once so your teacher can follow your learning progress.','உங்கள் கற்றல் முன்னேற்றத்தை ஆசிரியர் அறிய ஒருமுறை விவரங்களை உள்ளிடுங்கள்.')}</p>${studentForm()}</section>`;
 }
 function saveStudent(fields) {
+  studentDraft={...fields};
   try {
     window.StudentTracking.saveProfile(fields);
-    studentError='';editingStudent=false;
+    studentError='';studentDraft=null;studentFieldErrors={};editingStudent=false;
     route('home');syncStudentProgress();return true;
   } catch(error) {
-    studentError=t('Could not save details: ','விவரங்களைச் சேமிக்க இயலவில்லை: ')+error.message;
-    render();return false;
+    studentFieldErrors=error.fields || {};
+    studentError=error.fields ? t('Check the highlighted details.','குறிக்கப்பட்ட விவரங்களைச் சரிபார்க்கவும்.') : t('Could not save details: ','விவரங்களைச் சேமிக்க இயலவில்லை: ')+error.message;
+    render();
+    const first=Object.keys(studentFieldErrors)[0];
+    if(first) document.querySelector('#student-'+(first==='className'?'class':first))?.focus();
+    return false;
   }
 }
 function studentDetailsCard() {
@@ -231,6 +239,7 @@ function route(next) { view = currentStudent() ? next : 'onboarding'; document.q
 function start(type, n = activeSet) {
   if (!currentStudent()) { route('onboarding'); return; }
   if (attempt) { route('quiz'); return; }
+  if(!Number.isInteger(n) || n<1 || n>totalSets || !['ALL','MAT','SAT'].includes(type)) return;
   const qs = setQuestions(n,type);
   if (!qs.length) return;
   activeSet = n;
@@ -329,8 +338,8 @@ function render() {
 }
 document.addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b||b.disabled)return;
-  if(b.hasAttribute('data-edit-student')){editingStudent=true;studentError='';route('profile');return;}
-  if(b.hasAttribute('data-cancel-student')){editingStudent=false;studentError='';render();return;}
+  if(b.hasAttribute('data-edit-student')){editingStudent=true;studentError='';studentDraft=null;studentFieldErrors={};route('profile');return;}
+  if(b.hasAttribute('data-cancel-student')){editingStudent=false;studentError='';studentDraft=null;studentFieldErrors={};render();return;}
   if(b.hasAttribute('data-sync-progress')){syncStudentProgress();return;}
   if(b.dataset.route){route(b.dataset.route);return;}
   if(b.hasAttribute('data-start')){start(b.dataset.start,Number(b.dataset.set));return;}
@@ -341,7 +350,7 @@ document.addEventListener('click',e=>{
   if(b.hasAttribute('data-sync-sheet')){syncSheets();return;}
   if(b.hasAttribute('data-sound')){soundEnabled=!soundEnabled;persist();render();return;}
   if(b.hasAttribute('data-retry')){retryIncorrect();return;}
-  if(b.hasAttribute('data-question')&&attempt){const i=Number(b.dataset.question);if(i>=0&&i<attempt.answers.length){attempt.index=i;persist();render();document.querySelector('#question-title')?.scrollIntoView({block:'nearest'});}return;}
+  if(b.hasAttribute('data-question')&&attempt){const i=Number(b.dataset.question);if(Number.isInteger(i)&&i>=0&&i<attempt.answers.length){attempt.index=i;persist();render();document.querySelector('#question-title')?.scrollIntoView({block:'nearest'});}return;}
 
   if(b.hasAttribute('data-submit')&&attempt){const missing=attempt.answers.filter(a=>a===null).length;document.querySelector('#submit-title').textContent=t('Ready to finish?','சமர்ப்பிக்கத் தயாரா?');document.querySelector('#submit-copy').textContent=missing?t(`${missing} unanswered questions. Submit now and explore your answers?`,`${missing} வினாக்களுக்கு விடையளிக்கவில்லை. சமர்ப்பித்து விடைகளைக் காணலாமா?`):t('Submit your practice and discover what you’ve learned.','பயிற்சியைச் சமர்ப்பித்து உங்கள் முடிவுகளைக் காணுங்கள்.');document.querySelector('#confirm-submit').textContent=t('Submit practice','சமர்ப்பி');document.querySelector('#cancel-submit').textContent=t('Keep practising','தொடர்ந்து பயிற்சி செய்');document.querySelector('#submit-dialog').showModal();return;}
   if(b.dataset.reviewFilter){reviewFilter=b.dataset.reviewFilter;render();return;}
@@ -351,7 +360,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('submit',e=>{
   if(e.target.id!=='student-form')return;
   e.preventDefault();
-  saveStudent({name:document.querySelector('#student-name').value,school:document.querySelector('#student-school').value,className:document.querySelector('#student-class').value,section:document.querySelector('#student-section').value});
+  saveStudent({name:document.querySelector('#student-name').value,school:document.querySelector('#student-school').value,className:document.querySelector('#student-class').value,section:document.querySelector('#student-section').value,rollNumber:currentStudent()?.rollNumber || ''});
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='practice-set'){activeSet=Number(e.target.value);render();}
