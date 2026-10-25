@@ -133,3 +133,16 @@
 @media(max-width:900px){.nav-item.iconless{width:auto;padding:0 14px;border-radius:40px}.nav-item.iconless span{display:block;font-size:12px}}
 
 @media(max-width:650px){#bottom-nav{gap:4px;padding:6px}.nav-item{width:44px;height:48px}.nav-item.active{padding:0 12px}.nav-item.active span,.nav-item.iconless span{font-size:11px;white-space:nowrap}.nav-item.iconless{width:auto;padding:0 10px}}
+
+/* History rows have no leading icon; let the text use the full column. */
+.history-list .subject-row{grid-template-columns:minmax(0,1fr) auto auto}
+@media(max-width:650px){.history-list .subject-row{grid-template-columns:minmax(0,1fr) auto}}
+
+/* Even field widths and space between each pair. */
+.student-form{row-gap:14px}
+.student-form-row{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:24px;row-gap:18px;align-items:start;justify-content:space-between}
+.student-form-row>div{min-width:0;display:grid;gap:8px}
+.student-form-row label{margin:0}
+.student-form select{padding-right:32px;background-position:right 12px center}
+.student-form .sync-actions{justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(max-width:480px){.student-location-row{grid-template-columns:minmax(0,1fr)}.student-form-row{column-gap:16px}}

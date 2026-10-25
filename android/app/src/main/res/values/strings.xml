@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Kalvimurasu</string>
-    <string name="title_activity_main">Kalvimurasu</string>
+    <string name="app_name">NMMS Spark</string>
+    <string name="title_activity_main">NMMS Spark</string>
     <string name="package_name">com.kalvimurasu.nmms</string>
     <string name="custom_url_scheme">com.kalvimurasu.nmms</string>
 </resources>

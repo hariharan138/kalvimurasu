@@ -71,13 +71,14 @@ function doGet() {
 }
 
 // Tracking tabs are deliberately excluded from doGet and are never returned to app visitors.
-const STUDENT_HEADERS=['student_id','name','school','class','section','roll_number','registered_at','last_active_at','practices_completed','sets_completed','questions_answered','correct_answers','total_questions','average_score_percent','study_minutes','last_sync_at','profile_updated_at'];
+const STUDENT_HEADERS=['student_id','name','school','class','section','roll_number','registered_at','last_active_at','practices_completed','sets_completed','questions_answered','correct_answers','total_questions','average_score_percent','study_minutes','last_sync_at','profile_updated_at','district','block'];
 const PROGRESS_HEADERS=['event_id','student_id','student_name','school','class','subject','practice_set','set_key','is_retry','score','total','answered','wrong','skipped','percentage','duration_seconds','started_at','completed_at','received_at'];
 function trackingBook_() {
   return SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID') || DEFAULT_SPREADSHEET_ID);
 }
 function trackingSheet_(book,name,headers) {
   const sheet=book.getSheetByName(name) || book.insertSheet(name);
+  if(sheet.getMaxColumns && sheet.getMaxColumns()<headers.length) sheet.insertColumnsAfter(sheet.getMaxColumns(),headers.length-sheet.getMaxColumns());
   if(!sheet.getLastRow()) {
     sheet.getRange(1,1,1,headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
@@ -85,7 +86,9 @@ function trackingSheet_(book,name,headers) {
     sheet.setColumnWidths(1,headers.length,150);
   } else {
     const actual=sheet.getRange(1,1,1,headers.length).getDisplayValues()[0];
-    if(actual.join('|')!==headers.join('|')) throw new Error('Tracking tab headers do not match. Restore the supplied headers.');
+    if(name==='_Students' && actual.slice(0,17).join('|')===headers.slice(0,17).join('|') && actual.slice(17).every(v=>!v)) {
+      sheet.getRange(1,18,1,2).setValues([headers.slice(17)]);
+    } else if(actual.join('|')!==headers.join('|')) throw new Error('Tracking tab headers do not match. Restore the supplied headers.');
   }
   return sheet;
 }
@@ -116,7 +119,7 @@ function trackEvent_(event) {
   if(!event || !['profile','attempt'].includes(event.type)) throw new Error('Unsupported tracking event.');
   const raw=event.student;
   if(!raw) throw new Error('Student details are missing.');
-  const student={id:trackId_(raw.id),name:trackText_(raw.name,100),school:trackText_(raw.school,160),className:trackText_(raw.className,20),section:trackText_(raw.section || '',20,true),rollNumber:trackText_(raw.rollNumber || '',40,true),createdAt:trackTime_(raw.createdAt),updatedAt:trackTime_(raw.updatedAt)};
+  const student={id:trackId_(raw.id),name:trackText_(raw.name,100),school:trackText_(raw.school,160),className:trackText_(raw.className,20),section:trackText_(raw.section || '',20,true),rollNumber:trackText_(raw.rollNumber || '',40,true),district:raw.district===undefined?undefined:trackText_(raw.district,100,true),block:raw.block===undefined?undefined:trackText_(raw.block,100,true),createdAt:trackTime_(raw.createdAt),updatedAt:trackTime_(raw.updatedAt)};
   if(!['6','7','8','9','10','11','12'].includes(student.className)) throw new Error('Invalid class.');
   const clean={id:trackId_(event.id),type:event.type,student};
   if(event.type==='attempt') {
@@ -164,13 +167,13 @@ function doPost(e) {
     }
     for(const [id,profile] of profiles) {
       const rowNumber=studentRows.get(id), previous=rowNumber?records[rowNumber-2]:null;
-      const latest=!previous || profile.updatedAt>=Date.parse(String(previous[16]))?profile:{...profile,name:String(previous[1]),school:String(previous[2]),className:String(previous[3]),section:String(previous[4]),rollNumber:String(previous[5]),createdAt:Date.parse(String(previous[6])),updatedAt:Date.parse(String(previous[16]))};
+      const latest=!previous || profile.updatedAt>=Date.parse(String(previous[16]))?profile:{...profile,name:String(previous[1]),school:String(previous[2]),className:String(previous[3]),section:String(previous[4]),rollNumber:String(previous[5]),createdAt:Date.parse(String(previous[6])),updatedAt:Date.parse(String(previous[16])),district:String(previous[17] || ''),block:String(previous[18] || '')};
       const attempts=logs.filter(row=>String(row[1])===id);
       const sum=index=>attempts.reduce((n,row)=>n+Number(row[index]),0);
       const completed=new Set(attempts.filter(row=>row[8]!==true && row[8]!=='TRUE').map(row=>String(row[7]))).size;
       const average=attempts.length?Math.round(attempts.reduce((n,row)=>n+Number(row[9])/Number(row[10])*100,0)/attempts.length*10)/10:0;
       const lastActive=attempts.reduce((time,row)=>Math.max(time,Date.parse(String(row[17]))),latest.updatedAt);
-      const row=[id,latest.name,latest.school,latest.className,latest.section,latest.rollNumber,previous?previous[6]:new Date(latest.createdAt).toISOString(),new Date(lastActive).toISOString(),attempts.length,completed,sum(11),sum(9),sum(10),average,Math.round(sum(15)/60*10)/10,now,new Date(latest.updatedAt).toISOString()];
+      const row=[id,latest.name,latest.school,latest.className,latest.section,latest.rollNumber,previous?previous[6]:new Date(latest.createdAt).toISOString(),new Date(lastActive).toISOString(),attempts.length,completed,sum(11),sum(9),sum(10),average,Math.round(sum(15)/60*10)/10,now,new Date(latest.updatedAt).toISOString(),latest.district ?? previous?.[17] ?? '',latest.block ?? previous?.[18] ?? ''];
       trackingWriteRows_(students,rowNumber || students.getLastRow()+1,[row.map(trackingCell_)]);
     }
     SpreadsheetApp.flush();

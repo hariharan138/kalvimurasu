@@ -108,6 +108,27 @@ async function main() {
   assert(startupAddress.endsWith('/exec'));
   assert.equal(fresh.run('syncedSets.length'),3,'First-launch sync uses the built-in feed URL');
   assert.equal(freshDB.current.endpoint,startupAddress);
+  // Invalid cached data must not suppress an online replacement download.
+  const corruptDB=memoryDB({endpoint,data:{schemaVersion:2,subjects:[]},syncedAt:Date.now()});
+  let recoveredDownloads=0;
+  const recovered=boot(new Map(),{indexedDB:corruptDB,online:true,fetch:async()=>{
+    recoveredDownloads++;
+    return {ok:true,text:async()=>JSON.stringify(payload)};
+  }});
+  await new Promise(resolve=>setTimeout(resolve,40));
+  assert(recoveredDownloads>0,'Recover a damaged cache by downloading the configured feed');
+  assert.equal(recovered.run('syncedSets.length'),3);
+  assert.equal(corruptDB.current.data.schemaVersion,1);
+  const raced=boot();
+  raced.context.window.indexedDB={};
+  let resolveOldCache;
+  raced.context.window.SheetBank.read=()=>new Promise(resolve=>{resolveOldCache=resolve});
+  const loading=raced.run('loadSheetBank()');
+  raced.context.updatedRecord={endpoint,data:bank.validate(update),syncedAt:Date.now()};
+  raced.run('applySheetBank(updatedRecord)');
+  resolveOldCache(record);
+  await loading;
+  assert.equal(raced.run('setQuestions(1002)[0].text[0]'),'Edited question','A delayed old cache must not replace a newer bank');
   // Exercise the real Apps Script exporter against mock spreadsheet data.
   const script=fs.readFileSync('google-sheets/Code.gs','utf8');
   const getHeaders=vm.runInNewContext(script+'; HEADERS',{});

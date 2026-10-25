@@ -1,5 +1,19 @@
 apply plugin: 'com.android.application'
 
+// Keep the upload key and passwords outside version control.
+def uploadProperties = new Properties()
+def uploadPropertiesFile = rootProject.file('keystore.properties')
+if (uploadPropertiesFile.exists()) {
+    uploadPropertiesFile.withInputStream { uploadProperties.load(it) }
+}
+def uploadValue = { name, environment -> uploadProperties.getProperty(name) ?: System.getenv(environment) }
+def uploadStore = uploadValue('storeFile', 'NMMS_UPLOAD_STORE_FILE')
+def uploadStorePassword = uploadValue('storePassword', 'NMMS_UPLOAD_STORE_PASSWORD')
+def uploadAlias = uploadValue('keyAlias', 'NMMS_UPLOAD_KEY_ALIAS')
+def uploadKeyPassword = uploadValue('keyPassword', 'NMMS_UPLOAD_KEY_PASSWORD')
+def hasUploadSigning = [uploadStore, uploadStorePassword, uploadAlias, uploadKeyPassword].every { it }
+
+
 android {
     namespace = "com.kalvimurasu.nmms"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +21,8 @@ android {
         applicationId "com.kalvimurasu.nmms"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +30,20 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasUploadSigning) {
+            upload {
+                storeFile rootProject.file(uploadStore)
+                storePassword uploadStorePassword
+                keyAlias uploadAlias
+                keyPassword uploadKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            debuggable false
+            if (hasUploadSigning) signingConfig signingConfigs.upload
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -44,3 +70,15 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
+
+// Android Studio's Generate Signed Bundle wizard can supply injected signing values.
+tasks.register('validatePlaySigning') {
+    doLast {
+        if (!hasUploadSigning && !project.hasProperty('android.injected.signing.store.file')) {
+            throw new GradleException('Release signing is missing. Configure android/keystore.properties from the example, set NMMS_UPLOAD_* environment variables, or use Android Studio Generate Signed Bundle. Never upload a debug APK to Play.')
+        }
+    }
+}
+tasks.configureEach { task ->
+    if (task.name == 'preReleaseBuild') task.dependsOn('validatePlaySigning')
+}

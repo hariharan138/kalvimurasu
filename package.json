@@ -7,7 +7,9 @@
     "sync:android": "npm run build:mobile && cap sync android",
     "open:android": "cap open android",
     "build:android": "npm run sync:android && cd android && ./gradlew assembleDebug",
-    "check": "node --check nmms-pwa/app.js && node --check nmms-pwa/sheet-sync.js && node --check nmms-pwa/student-tracking.js && node scripts/check-mobile.cjs && node scripts/check-sheet-sync.cjs && node scripts/check-student-tracking.cjs"
+    "check": "node --check nmms-pwa/app.js && node --check nmms-pwa/sheet-sync.js && node --check nmms-pwa/student-tracking.js && node scripts/check-mobile.cjs && node scripts/check-sheet-sync.cjs && node scripts/check-student-tracking.cjs && node scripts/check-website.cjs",
+    "bundle:android": "npm run check:play && cd android && ./gradlew bundleRelease",
+    "check:play": "npm run sync:android && npm run check && node scripts/check-play.cjs"
   },
   "repository": {
     "type": "git",

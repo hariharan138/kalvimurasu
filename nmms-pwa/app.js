@@ -3,7 +3,7 @@ const app = document.querySelector('#app');
 const nav = document.querySelector('#bottom-nav');
 const KEY = 'kalvimurasu-v2';
 const bundledSetCount = Math.ceil(questions.length / 25);
-let totalSets = bundledSetCount, syncedSets = [];
+let totalSets = bundledSetCount, syncedSets = [], sheetRevision = 0;
 let sheetConnection = null, syncBusy = false, syncMessage = null, lastSyncAttempt = 0;
 const icons = {
   home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
@@ -28,7 +28,7 @@ const escapeHTML = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;'
 function readStore() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 const stored = readStore();
 let lang = stored.lang === 'ta' ? 1 : 0;
-let studentDraft = null, studentFieldErrors = {};
+let studentDraft = null, studentFieldErrors = {}, sheetEndpointDraft = null;
 let studentError = '', editingStudent = false, trackingError = '';
 let view = 'home', activeSet = 1, filter = 'all', reviewFilter = 'all';
 let history = [];
@@ -57,7 +57,7 @@ function studentForm(edit = false) {
   const student=studentDraft || currentStudent();
   const errorFor=key=>studentFieldErrors[key] ? `<p id="student-${key}-error" class="student-field-error">${escapeHTML(t(...studentFieldErrors[key]))}</p>` : '';
   const invalid=key=>studentFieldErrors[key] ? `aria-invalid="true" aria-describedby="student-${key}-error"` : '';
-  return `<form id="student-form" class="student-form" novalidate><label for="student-name">${t('Student name','மாணவர் பெயர்')}</label><input id="student-name" ${invalid('name')} name="name" autocomplete="name" required maxlength="100" value="${escapeHTML(student?.name || '')}">${errorFor('name')}<label for="student-school">${t('School name','பள்ளியின் பெயர்')}</label><input id="student-school" ${invalid('school')} name="school" required maxlength="160" value="${escapeHTML(student?.school || '')}">${errorFor('school')}<div class="student-form-row"><div><label for="student-class">${t('Class','வகுப்பு')}</label><select id="student-class" ${invalid('className')} name="className" required>${['6','7','8','9','10','11','12'].map(n=>`<option value="${n}" ${(student?.className || '8')===n?'selected':''}>${n}</option>`).join('')}</select>${errorFor('className')}</div><div><label for="student-section">${t('Section (optional)','பிரிவு (விருப்பம்)')}</label><input id="student-section" ${invalid('section')} name="section" maxlength="20" value="${escapeHTML(student?.section || '')}">${errorFor('section')}</div></div><p class="student-data-note">${t('Your name, school, class, and practice results will be sent to your teacher’s Google Sheet when internet is available. You can start learning offline.','உங்கள் பெயர், பள்ளி, வகுப்பு மற்றும் பயிற்சி முடிவுகள் இணையம் கிடைக்கும்போது ஆசிரியரின் கூகுள் தாளில் சேமிக்கப்படும். இணையமின்றியும் கற்றலைத் தொடங்கலாம்.')}</p>${studentError?`<p role="alert" class="student-error">${escapeHTML(studentError)}</p>`:''}<div class="sync-actions"><button class="primary" type="submit">${edit?t('Save details','விவரங்களைச் சேமி'):t('Save & start learning','சேமித்துக் கற்கத் தொடங்கு')}${icon('arrow')}</button>${edit?`<button type="button" class="secondary" data-cancel-student>${t('Cancel','ரத்து')}</button>`:''}</div></form>`;
+  return `<form id="student-form" class="student-form" novalidate><label for="student-name">${t('Student name','மாணவர் பெயர்')}</label><input id="student-name" ${invalid('name')} name="name" autocomplete="name" required maxlength="100" value="${escapeHTML(student?.name || '')}">${errorFor('name')}<label for="student-school">${t('School name','பள்ளியின் பெயர்')}</label><input id="student-school" ${invalid('school')} name="school" required maxlength="160" value="${escapeHTML(student?.school || '')}">${errorFor('school')}<div class="student-form-row student-location-row"><div><label for="student-district">${t('District (Tamil Nadu)','மாவட்டம் (தமிழ்நாடு)')}</label><select id="student-district" ${invalid('district')} name="district" autocomplete="address-level2"><option value="">${t('Select district (optional)','மாவட்டம் (விருப்பம்)')}</option>${window.StudentTracking.districts.map(([en,ta])=>`<option value="${escapeHTML(en)}" ${student?.district===en?'selected':''}>${escapeHTML(t(en,ta))}</option>`).join('')}</select>${errorFor('district')}</div><div><label for="student-block">${t('Block (optional)','வட்டாரம் (விருப்பம்)')}</label><input id="student-block" ${invalid('block')} name="block" maxlength="100" value="${escapeHTML(student?.block || '')}" placeholder="${t('Enter your school block','பள்ளி வட்டாரத்தை உள்ளிடவும்')}">${errorFor('block')}</div></div><div class="student-form-row"><div><label for="student-class">${t('Class','வகுப்பு')}</label><select id="student-class" ${invalid('className')} name="className" required>${['6','7','8','9','10','11','12'].map(n=>`<option value="${n}" ${(student?.className || '8')===n?'selected':''}>${n}</option>`).join('')}</select>${errorFor('className')}</div><div><label for="student-section">${t('Section (optional)','பிரிவு (விருப்பம்)')}</label><input id="student-section" ${invalid('section')} name="section" maxlength="20" value="${escapeHTML(student?.section || '')}">${errorFor('section')}</div></div><p class="student-data-note">${t('Your name, school, class, district/block if provided, and practice results will be sent to your teacher’s Google Sheet when internet is available. You can start learning offline.','உங்கள் பெயர், பள்ளி, வகுப்பு, வழங்கிய மாவட்டம்/வட்டாரம் மற்றும் பயிற்சி முடிவுகள் இணையம் கிடைக்கும்போது ஆசிரியரின் கூகுள் தாளில் சேமிக்கப்படும். இணையமின்றியும் கற்றலைத் தொடங்கலாம்.')}</p>${studentError?`<p role="alert" class="student-error">${escapeHTML(studentError)}</p>`:''}<div class="sync-actions"><button class="primary" type="submit">${edit?t('Save details','விவரங்களைச் சேமி'):t('Save & start learning','சேமித்துக் கற்கத் தொடங்கு')}${icon('arrow')}</button>${edit?`<button type="button" class="secondary" data-cancel-student>${t('Cancel','ரத்து')}</button>`:''}</div></form>`;
 }
 function androidDownloadCard() {
   if(window.NMMS_NATIVE) return '';
@@ -84,7 +84,7 @@ function saveStudent(fields) {
 function studentDetailsCard() {
   const student=currentStudent();
   if(!student) return '';
-  return `<section class="setting-card"><span class="subject-icon mint">${icon('user')}</span><div><h2>${t('Student details','மாணவர் விவரங்கள்')}</h2>${editingStudent?studentForm(true):`<p><strong>${escapeHTML(student.name)}</strong><br>${escapeHTML(student.school)}<br>${t('Class','வகுப்பு')} ${escapeHTML(student.className)}${student.section?' · '+escapeHTML(student.section):''}</p><button class="secondary" data-edit-student>${t('Edit details','விவரங்களை மாற்று')}</button>`}</div></section>`;
+  return `<section class="setting-card"><span class="subject-icon mint">${icon('user')}</span><div><h2>${t('Student details','மாணவர் விவரங்கள்')}</h2>${editingStudent?studentForm(true):`<p><strong>${escapeHTML(student.name)}</strong><br>${escapeHTML(student.school)}${student.district || student.block?`<br>${escapeHTML([student.block,student.district].filter(Boolean).join(' · '))}`:''}<br>${t('Class','வகுப்பு')} ${escapeHTML(student.className)}${student.section?' · '+escapeHTML(student.section):''}</p><button class="secondary" data-edit-student>${t('Edit details','விவரங்களை மாற்று')}</button>`}</div></section>`;
 }
 function trackingStatusCard() {
   const status=window.StudentTracking.status();
@@ -100,6 +100,7 @@ function queueResultForTeacher(record) {
 function syncStudentProgress() {
   if(!currentStudent()) return;
   for(const record of history) queueResultForTeacher(record);
+  history=retainHistory(history);
   persist();
   window.StudentTracking.flush();
 }
@@ -107,6 +108,7 @@ function choicesForFilter() {
   return Array.from({length:totalSets},(_,i)=>i+1).filter(n => filter === 'all' || (filter === 'mixed' ? n < 401 : setSubject(n)?.key === filter && n >= 401));
 }
 function applySheetBank(record) {
+  sheetRevision++;
   const imported = [], sets = [], deployment = record.endpoint.split('/').at(-2);
   for (const sheet of record.data.subjects) {
     if (!sheet.questions.length) continue;
@@ -126,7 +128,11 @@ function applySheetBank(record) {
 function sheetSyncCard() {
   const count = sheetConnection?.data.subjects.reduce((sum,s)=>sum+s.questions.length,0) || 0;
   const status = syncBusy ? t('Downloading questions…','வினாக்கள் பதிவிறக்கப்படுகின்றன…') : syncMessage ? t(...syncMessage) : sheetConnection ? t(`${count} questions saved offline. Last synced: ${new Date(sheetConnection.syncedAt).toLocaleString('en-IN')}`,`${count} வினாக்கள் சாதனத்தில் சேமிக்கப்பட்டுள்ளன. கடைசி பதிவிறக்கம்: ${new Date(sheetConnection.syncedAt).toLocaleString('ta-IN')}`) : t('Connect your question sheet once. Updates download on launch, resume, or when internet returns.','ஒருமுறை உங்கள் வினாத் தாளை இணைக்கவும். செயலியைத் திறக்கும்போதும் இணையம் கிடைக்கும்போதும் புதுப்பிக்கப்படும்.');
-  return `<section class="setting-card sheet-sync-card"><span class="subject-icon blue">${icon('download')}</span><div><h2>${t('Google Sheets questions','கூகுள் தாள் வினாக்கள்')}</h2><p>${t('Each sheet tab becomes a subject. Downloaded questions work offline.','ஒவ்வொரு தாளும் ஒரு பாடமாகும். பதிவிறக்கிய வினாக்களை இணையமின்றிப் பயிலலாம்.')}</p><label for="sheet-endpoint">${t('Question feed URL (Apps Script)','வினா இணைப்பு (Apps Script)')}</label><input id="sheet-endpoint" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec" value="${escapeHTML(sheetConnection?.endpoint || window.NMMS_SHEET_ENDPOINT || '')}" ${syncBusy?'disabled':''}><div class="sync-actions"><button class="primary" data-connect-sheet ${syncBusy?'disabled':''}>${t('Connect & sync','இணைத்துப் பதிவிறக்கு')}</button>${sheetConnection?`<button class="secondary" data-sync-sheet ${syncBusy?'disabled':''}>${t('Sync now','இப்போது புதுப்பி')}</button>`:''}</div><p role="status" aria-live="polite" class="sync-status">${escapeHTML(status)}</p></div></section>`;
+  return `<section class="setting-card sheet-sync-card"><span class="subject-icon blue">${icon('download')}</span><div><h2>${t('Google Sheets questions','கூகுள் தாள் வினாக்கள்')}</h2><p>${t('Each sheet tab becomes a subject. Downloaded questions work offline.','ஒவ்வொரு தாளும் ஒரு பாடமாகும். பதிவிறக்கிய வினாக்களை இணையமின்றிப் பயிலலாம்.')}</p><label for="sheet-endpoint">${t('Question feed URL (Apps Script)','வினா இணைப்பு (Apps Script)')}</label><input id="sheet-endpoint" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec" value="${escapeHTML(sheetEndpointDraft ?? (sheetConnection?.endpoint || window.NMMS_SHEET_ENDPOINT || ''))}" ${syncBusy?'disabled':''}><div class="sync-actions"><button class="primary" data-connect-sheet ${syncBusy?'disabled':''}>${t('Connect & sync','இணைத்துப் பதிவிறக்கு')}</button>${sheetConnection?`<button class="secondary" data-sync-sheet ${syncBusy?'disabled':''}>${t('Sync now','இப்போது புதுப்பி')}</button>`:''}</div><p role="status" aria-live="polite" class="sync-status">${escapeHTML(status)}</p></div></section>`;
+}
+function refreshDataViews() {
+  if(view==='profile' && (editingStudent || document.activeElement?.closest?.('input, select, textarea'))) return;
+  if(['profile','home','practice'].includes(view)) render();
 }
 async function syncSheets(candidate, automatic = false) {
   if (syncBusy || !window.SheetBank || navigator.onLine === false) {
@@ -137,38 +143,46 @@ async function syncSheets(candidate, automatic = false) {
   if (candidate !== undefined && !candidate.trim()) { syncMessage=['Paste your Apps Script /exec URL first.','முதலில் Apps Script /exec இணைப்பை உள்ளிடவும்.']; if(view==='profile') render(); return; }
   if (!address || automatic && Date.now()-lastSyncAttempt < 60000) return;
   syncBusy=true; lastSyncAttempt=Date.now(); syncMessage=null;
-  if (view==='profile') render();
+  if(view==='profile' && !editingStudent && (!automatic || !document.activeElement?.closest?.('input, select, textarea'))) render();
   try {
     const record=await window.SheetBank.download(address);
     // Never expose a new bank before its offline transaction has committed.
     await window.SheetBank.write(record);
     applySheetBank(record);
+    if(candidate !== undefined && sheetEndpointDraft === candidate) sheetEndpointDraft=null;
     syncMessage=[`Synced ${record.data.subjects.length} subject tabs. Questions are saved offline.`,` ${record.data.subjects.length} பாடத் தாள்கள் புதுப்பிக்கப்பட்டன. வினாக்கள் சாதனத்தில் சேமிக்கப்பட்டுள்ளன.`];
   } catch(error) {
     syncMessage=[`Sync failed: ${error.message} Previous questions are unchanged.`,`புதுப்பிக்க இயலவில்லை: ${error.message} முன்பு சேமித்த வினாக்கள் பாதுகாப்பாக உள்ளன.`];
   } finally {
     syncBusy=false;
     // Do not disrupt an in-progress answer, review, or a focused form during background work.
-    if (view==='profile' || view==='home' || view==='practice') render();
+    refreshDataViews();
   }
 }
 async function loadSheetBank() {
   if (!window.SheetBank || !window.indexedDB) return;
+  const revision=sheetRevision;
   try {
     const record=await window.SheetBank.read();
-    if (record) {
+    if (record && revision===sheetRevision) {
       record.endpoint=window.SheetBank.endpoint(record.endpoint);
       record.data=window.SheetBank.validate(record.data);
       applySheetBank(record);
-      if (view==='profile' || view==='home' || view==='practice') render();
+      refreshDataViews();
     }
-    syncSheets(undefined,true);
   } catch { syncMessage=['Saved sheet questions could not be loaded. Reconnect your feed to try again.','சேமித்த தாள் வினாக்களைத் திறக்க இயலவில்லை. மீண்டும் இணைக்கவும்.']; }
+  // A damaged cache must not prevent downloading a clean replacement.
+  syncSheets(undefined,true);
 }
 
 function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify({lang:lang ? 'ta':'en',soundEnabled,completedSets:[...completedSets],history,attempt})); }
+  try { localStorage.setItem(KEY, JSON.stringify({lang:lang ? 'ta':'en',soundEnabled,completedSets:[...completedSets],history,attempt})); storageFailed=false; }
   catch { storageFailed = true; }
+  document.querySelector('#storage-message').hidden=!storageFailed;
+}
+// Never evict results that have not yet reached the durable upload queue.
+function retainHistory(records) {
+  return records.filter((r,i)=>i<200 || (r.studentId===currentStudent()?.id && !r.trackingQueued));
 }
 function validRecord(a) {
   if (!a || !Number.isInteger(a.set) || a.set < 1 || !['ALL','MAT','SAT'].includes(a.type)) return false;
@@ -181,10 +195,16 @@ function validRecord(a) {
   const length = a.indices ? a.indices.length : pool.length;
   return length > 0 && Array.isArray(a.answers) && a.answers.length === length && a.answers.every(v => v === null || (Number.isInteger(v) && v >= 0 && v < 4));
 }
+const validTime = value => Number.isFinite(value) && value >= 946684800000 && value <= 4102444800000;
+const belongsToStudent = record => !record.studentId || record.studentId === currentStudent()?.id;
 function validAttempt(a) {
-  return validRecord(a) && Number.isFinite(a.deadline) && Number.isFinite(a.started) && Number.isInteger(a.index) && a.index >= 0 && a.index < a.answers.length;
+  return validRecord(a) && belongsToStudent(a) && validTime(a.deadline) && validTime(a.started) && a.deadline >= a.started && a.deadline <= a.started + a.answers.length * 60000 + 1000 && Number.isInteger(a.index) && a.index >= 0 && a.index < a.answers.length;
 }
-history = Array.isArray(stored.history) ? stored.history.filter(r => validRecord(r) && r.total === r.answers.length && Number.isInteger(r.score) && r.score >= 0 && r.score <= r.total && Number.isFinite(r.date)).slice(0,200) : [];
+history = Array.isArray(stored.history) ? retainHistory(stored.history.filter(r => validRecord(r) && belongsToStudent(r) && r.total === r.answers.length && validTime(r.started) && validTime(r.date) && r.date >= r.started).map(r => {
+  // Derive scores from the saved answers, rather than trusting stale totals.
+  const score=practiceQuestions(r).filter((q,i)=>q.answer===r.answers[i]).length;
+  return score===r.score ? r : {...r,score,trackingQueued:false};
+})) : [];
 history.filter(r => !r.indices).forEach(r => completedSets.add(setKey(r)));
 if (validAttempt(stored.attempt)) attempt = stored.attempt;
 async function playFeedback(correct) {
@@ -234,7 +254,7 @@ function answerFeedback(q, answer) {
   const correct = answer === q.answer;
   return `<section id="answer-feedback" class="answer-feedback ${correct?'is-correct':'is-incorrect'}" tabindex="-1" role="status" aria-live="polite"><h3>${correct?t('Correct!','சரியான விடை!'):t('Keep learning!','தொடர்ந்து கற்றிடுங்கள்!')}</h3><p>${t('Correct answer','சரியான விடை')}: <strong>${escapeHTML(option(q,q.answer))}</strong></p><p>${escapeHTML(q.explanation[lang])}</p>${!correct && q.option_explanations?.[answer]?.[lang] ? `<p>${escapeHTML(q.option_explanations[answer][lang])}</p>` : ''}</section>`;
 }
-function route(next) { view = currentStudent() ? next : 'onboarding'; document.querySelector('#menu-dialog').close(); render(); window.scrollTo(0,0); app.focus({preventScroll:true}); }
+function route(next) { if(!['home','practice','quiz','result','progress','profile','onboarding'].includes(next)) return; view = currentStudent() ? next : 'onboarding'; document.querySelector('#menu-dialog').close(); render(); window.scrollTo(0,0); app.focus({preventScroll:true}); }
 function start(type, n = activeSet) {
   if (!currentStudent()) { route('onboarding'); return; }
   if (attempt) { route('quiz'); return; }
@@ -242,17 +262,18 @@ function start(type, n = activeSet) {
   const qs = setQuestions(n,type);
   if (!qs.length) return;
   activeSet = n;
-  attempt = {studentId:currentStudent().id,trackingId:window.StudentTracking.uuid(),set:n,type,index:0,answers:qs.map(() => null),started:Date.now(),deadline:Date.now()+qs.length*60000};
+  const now=Date.now();
+  attempt = {studentId:currentStudent().id,trackingId:window.StudentTracking.uuid(),set:n,type,index:0,answers:qs.map(() => null),started:now,deadline:now+qs.length*60000};
   if (n > bundledSetCount) { attempt.snapshot=qs; attempt.setKey=syncedSets[n-bundledSetCount-1].key; }
   persist(); route('quiz');
 }
 function finish(expired = false) {
   if (!attempt) return;
   const qs = practiceQuestions(attempt);
-  result = {...attempt,total:qs.length,score:qs.filter((q,i) => q.answer === attempt.answers[i]).length,date:Date.now(),expired};
+  result = {...attempt,total:qs.length,score:qs.filter((q,i) => q.answer === attempt.answers[i]).length,date:Math.max(attempt.started,Date.now()),expired};
   if (!attempt.indices) completedSets.add(setKey(attempt));
   queueResultForTeacher(result);
-  history.unshift(result); history = history.slice(0,200); attempt = null; reviewFilter = 'all';
+  history.unshift(result); history = retainHistory(history); attempt = null; reviewFilter = 'all';
   persist(); document.querySelector('#submit-dialog').close(); route('result');syncStudentProgress();
 }
 function secondsLeft() { return attempt ? Math.max(0,Math.ceil((attempt.deadline-Date.now())/1000)) : 0; }
@@ -300,12 +321,12 @@ function resultScreen() {
   return `<div class="quiz-heading"><button class="circle-button" data-route="progress" aria-label="${t('Back to progress','முன்னேற்றத்திற்குத் திரும்பு')}">${icon('back')}</button><div><p class="eyebrow">${t('PRACTICE SET','பயிற்சித் தொகுப்பு')} ${result.set}</p><h1>${t('Look how far you’ve come.','உங்கள் பயிற்சியின் முடிவு.')}</h1></div></div>
   <section class="result-banner"><div><span class="pill-label">${icon(result.expired?'clock':'check')}${result.expired?t('Time is up','நேரம் முடிந்தது'):t('Practice complete','பயிற்சி நிறைவடைந்தது')}</span><h2>${t('Every answer.<br>A step forward.','ஒவ்வொரு விடையும்<br>ஒரு முன்னேற்றம்.')}</h2><p>${t('Keep your curiosity. Keep growing.','ஆர்வத்துடன் கற்றலைத் தொடருங்கள்.')}</p><button class="primary" data-route="practice">${t('Try another practice','அடுத்த பயிற்சி')}${icon('arrow')}</button></div><div class="score-ring" style="--score:${percentage}%"><div><strong>${percentage}<small>%</small></strong><span>${result.score} / ${qs.length} ${t('correct','சரி')}</span></div></div></section>
   <div class="result-counts"><div><i class="mint">${icon('check')}</i><strong>${result.score}</strong><span>${t('Correct','சரி')}</span></div><div><i class="pink">${icon('close')}</i><strong>${wrong}</strong><span>${t('Incorrect','தவறு')}</span></div><div><i class="lilac">${icon('clock')}</i><strong>${skipped}</strong><span>${t('Unanswered','விடையளிக்காதவை')}</span></div></div>
-  ${wrong>0?`<button class="primary retry-button" data-retry>${icon('play')}${t('Retry incorrect answers','தவறான விடைகளை மீண்டும் பயில்க')} (${wrong})</button>`:''}${sectionHeading(t('Review & rediscover','விடைகளும் விளக்கங்களும்'))}<div class="filter-chips">${[['all',t('All questions','அனைத்தும்')],['correct',t('Correct','சரி')],['incorrect',t('Incorrect','தவறு')],['unanswered',t('Unanswered','விடையளிக்காதவை')]].map(([key,label])=>`<button class="chip ${reviewFilter===key?'active':''}" data-review-filter="${key}" aria-pressed="${reviewFilter===key}">${label}</button>`).join('')}</div><div class="review-list">${qs.map((q,i)=>{const a=result.answers[i],status=a===null?'unanswered':a===q.answer?'correct':'incorrect';if(reviewFilter!=='all'&&reviewFilter!==status)return '';return `<details class="review-item ${status}"><summary><span class="review-number">${i+1}</span><span>${escapeHTML(q.text[lang])}</span><span class="review-status ${status}">${status==='correct'?icon('check'):status==='unanswered'?icon('clock'):icon('close')}</span></summary><div class="review-content"><p class="review-answer ${status}">${t('Your answer','உங்கள் விடை')}: <strong>${a===null?'—':escapeHTML(option(q,a))}</strong></p><p class="review-answer correct">${t('Correct answer','சரியான விடை')}: <strong>${escapeHTML(option(q,q.answer))}</strong></p><div class="explanation"><strong>${t('Let’s understand why','விளக்கம்')}</strong><p>${escapeHTML(q.explanation[lang])}</p>${q.option_explanations&&a!==null&&a!==q.answer?`<p>${escapeHTML(q.option_explanations[a][lang])}</p>`:''}</div>${q.source?`<p class="source-note">${escapeHTML(q.source[lang])}</p>`:''}</div></details>`;}).join('') || `<div class="empty-state">${icon('check')}<h2>${t('No questions in this group','இந்தப் பிரிவில் வினாக்கள் இல்லை')}</h2></div>`}</div>`;
+  ${wrong>0?`<button class="primary retry-button" data-retry>${icon('play')}${t('Retry incorrect answers','தவறான விடைகளை மீண்டும் பயில்க')} (${wrong})</button>`:''}${sectionHeading(t('Review & rediscover','விடைகளும் விளக்கங்களும்'))}<div class="filter-chips">${[['all',t('All questions','அனைத்தும்')],['correct',t('Correct','சரி')],['incorrect',t('Incorrect','தவறு')],['unanswered',t('Unanswered','விடையளிக்காதவை')]].map(([key,label])=>`<button class="chip ${reviewFilter===key?'active':''}" data-review-filter="${key}" aria-pressed="${reviewFilter===key}">${label}</button>`).join('')}</div><div class="review-list">${qs.map((q,i)=>{const a=result.answers[i],status=a===null?'unanswered':a===q.answer?'correct':'incorrect';if(reviewFilter!=='all'&&reviewFilter!==status)return '';return `<details class="review-item ${status}"><summary><span class="review-number">${i+1}</span><span>${escapeHTML(q.text[lang])}</span><span class="review-status ${status}">${status==='correct'?icon('check'):status==='unanswered'?icon('clock'):icon('close')}</span></summary><div class="review-content"><p class="review-answer ${status}">${t('Your answer','உங்கள் விடை')}: <strong>${a===null?'—':escapeHTML(option(q,a))}</strong></p><p class="review-answer correct">${t('Correct answer','சரியான விடை')}: <strong>${escapeHTML(option(q,q.answer))}</strong></p><div class="explanation"><strong>${t('Let’s understand why','விளக்கம்')}</strong><p>${escapeHTML(q.explanation[lang])}</p>${a!==null&&a!==q.answer&&q.option_explanations?.[a]?.[lang]?`<p>${escapeHTML(q.option_explanations[a][lang])}</p>`:''}</div>${q.source?`<p class="source-note">${escapeHTML(q.source[lang])}</p>`:''}</div></details>`;}).join('') || `<div class="empty-state">${icon('check')}<h2>${t('No questions in this group','இந்தப் பிரிவில் வினாக்கள் இல்லை')}</h2></div>`}</div>`;
 }
 function progressScreen() {
   const average=history.length?Math.round(history.reduce((n,r)=>n+r.score/r.total*100,0)/history.length):0;
   return `<div class="page-heading"><div><p class="eyebrow">${t('EVERY EFFORT COUNTS','ஒவ்வொரு முயற்சியும் முக்கியம்')}</p><h1>${t('Your journey,<br>one step at a time.','உங்கள் கற்றல்<br>பயணம்.')}</h1></div><span class="heading-spark">${icon('chart')}</span></div><div class="progress-summary"><div class="blue"><span>${t('Sets completed','முடித்த தொகுப்புகள்')}</span><strong>${completedSets.size}</strong></div><div class="mint"><span>${t('Practices completed','முடித்த பயிற்சிகள்')}</span><strong>${history.length}</strong></div><div class="pink"><span>${t('Average score','சராசரி மதிப்பெண்')}</span><strong>${average}%</strong></div><div class="lilac"><span>${t('Questions attempted','முயன்ற வினாக்கள்')}</span><strong>${history.reduce((n,r)=>n+r.answers.filter(a=>a!==null).length,0)}</strong></div></div>
-  ${trackingStatusCard()}${sectionHeading(t('Your recent practices','சமீபத்திய பயிற்சிகள்'))}${history.length?`<div class="history-list">${history.map((r,i)=>`<button class="subject-row" data-history="${i}"><span class="subject-icon ${i%2?'pink':'mint'}">${icon('book')}</span><span class="row-copy"><strong>${t('Set','தொகுப்பு')} ${r.set} · ${r.indices?t('Retry mistakes','தவறுகளை மீண்டும் பயில்க'):r.snapshot?escapeHTML(r.snapshot[0].subject):typeName(r.type)}</strong><small>${new Date(r.date).toLocaleDateString(lang?'ta-IN':'en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${r.score} / ${r.total}</small></span><span class="history-score">${Math.round(r.score/r.total*100)}%</span><span class="round-arrow">${icon('arrow')}</span></button>`).join('')}</div>`:`<section class="empty-state"><span class="empty-icon mint">${icon('chart')}</span><h2>${t('Your first chapter is waiting.','உங்கள் முதல் பயிற்சி காத்திருக்கிறது.')}</h2><p>${t('Complete a practice to see your scores and revisit your answers here.','ஒரு பயிற்சியை முடித்ததும் மதிப்பெண்களையும் விடைகளையும் இங்கே காணலாம்.')}</p><button class="primary" data-route="practice">${t('Start your first practice','முதல் பயிற்சியைத் தொடங்கு')}${icon('arrow')}</button></section>`}<p class="fine-print">${t('Your latest 200 attempts and all completed set numbers are stored on this device and browser.','கடைசி 200 முயற்சிகளும் முடித்த அனைத்துத் தொகுப்பு எண்களும் இந்தச் சாதனத்தின் உலாவியில் சேமிக்கப்படும்.')}</p>`;
+  ${trackingStatusCard()}${sectionHeading(t('Your recent practices','சமீபத்திய பயிற்சிகள்'))}${history.length?`<div class="history-list">${history.map((r,i)=>`<button class="subject-row" data-history="${i}"><span class="row-copy"><strong>${t('Set','தொகுப்பு')} ${r.set} · ${r.indices?t('Retry mistakes','தவறுகளை மீண்டும் பயில்க'):r.snapshot?escapeHTML(r.snapshot[0].subject):typeName(r.type)}</strong><small>${new Date(r.date).toLocaleDateString(lang?'ta-IN':'en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${r.score} / ${r.total}</small></span><span class="history-score">${Math.round(r.score/r.total*100)}%</span><span class="round-arrow">${icon('arrow')}</span></button>`).join('')}</div>`:`<section class="empty-state"><span class="empty-icon mint">${icon('chart')}</span><h2>${t('Your first chapter is waiting.','உங்கள் முதல் பயிற்சி காத்திருக்கிறது.')}</h2><p>${t('Complete a practice to see your scores and revisit your answers here.','ஒரு பயிற்சியை முடித்ததும் மதிப்பெண்களையும் விடைகளையும் இங்கே காணலாம்.')}</p><button class="primary" data-route="practice">${t('Start your first practice','முதல் பயிற்சியைத் தொடங்கு')}${icon('arrow')}</button></section>`}<p class="fine-print">${t('Your latest 200 attempts, results waiting to be queued, and completed set numbers are stored on this device and browser.','கடைசி 200 முயற்சிகள், பதிவேற்ற வரிசைக்குக் காத்திருக்கும் முடிவுகள் மற்றும் முடித்த தொகுப்பு எண்கள் இந்தச் சாதனத்தின் உலாவியில் சேமிக்கப்படும்.')}</p>`;
 }
 function profileScreen() {
   const installed=!!window.NMMS_NATIVE || window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
@@ -332,7 +353,7 @@ function render() {
   document.querySelector('#menu-content').innerHTML=`<h2>${t('Your learning space','உங்கள் கற்றல் தளம்')}</h2>${[['home',t('Home','முகப்பு')],['practice',t('Practice','பயிற்சி')],['progress',t('Progress','முன்னேற்றம்')],['profile',t('Profile & install','சுயவிவரம் & நிறுவல்')]].map(([id,label])=>`<button class="menu-link" data-route="${id}">${label}${icon('arrow')}</button>`).join('')}`;
   document.querySelector('#storage-message').hidden=!storageFailed;
   document.querySelector('#storage-message').textContent=t('Your browser could not save progress. Keep this tab open to retain this attempt.','உலாவியில் முன்னேற்றத்தைச் சேமிக்க இயலவில்லை. இந்தப் பக்கத்தைத் திறந்து வைத்திருங்கள்.');
-  document.title=`${t('Kalvimurasu','கல்விமுரசு')} · NMMS`;
+  document.title=`NMMS Spark · ${t('NMMS Practice','NMMS பயிற்சி')}`;
   if(view==='quiz') tick();
 }
 document.addEventListener('click',e=>{
@@ -342,8 +363,8 @@ document.addEventListener('click',e=>{
   if(b.hasAttribute('data-sync-progress')){syncStudentProgress();return;}
   if(b.dataset.route){route(b.dataset.route);return;}
   if(b.hasAttribute('data-start')){start(b.dataset.start,Number(b.dataset.set));return;}
-  if(b.dataset.subject){filter=b.dataset.subject;activeSet=subjects.find(s=>s.key===filter).start;route('practice');return;}
-  if(b.dataset.filter){filter=b.dataset.filter;activeSet=filter==='all'||filter==='mixed'?1:subjects.find(s=>s.key===filter).start;render();return;}
+  if(b.dataset.subject){const subject=subjects.find(s=>s.key===b.dataset.subject);if(!subject)return;filter=subject.key;activeSet=subject.start;route('practice');return;}
+  if(b.dataset.filter){const subject=subjects.find(s=>s.key===b.dataset.filter);if(!subject&&!['all','mixed'].includes(b.dataset.filter))return;filter=b.dataset.filter;activeSet=subject?.start || 1;render();return;}
   if(b.hasAttribute('data-answer')){answerQuestion(Number(b.dataset.answer));return;}
   if(b.hasAttribute('data-connect-sheet')){const address=document.querySelector('#sheet-endpoint').value;syncSheets(address);return;}
   if(b.hasAttribute('data-sync-sheet')){syncSheets();return;}
@@ -359,10 +380,18 @@ document.addEventListener('click',e=>{
 document.addEventListener('submit',e=>{
   if(e.target.id!=='student-form')return;
   e.preventDefault();
-  saveStudent({name:document.querySelector('#student-name').value,school:document.querySelector('#student-school').value,className:document.querySelector('#student-class').value,section:document.querySelector('#student-section').value,rollNumber:currentStudent()?.rollNumber || ''});
+  saveStudent({name:document.querySelector('#student-name').value,school:document.querySelector('#student-school').value,className:document.querySelector('#student-class').value,section:document.querySelector('#student-section').value,district:document.querySelector('#student-district').value,block:document.querySelector('#student-block').value,rollNumber:currentStudent()?.rollNumber || ''});
 });
+function rememberFormField(target) {
+  const fields={'student-name':'name','student-school':'school','student-class':'className','student-section':'section','student-district':'district','student-block':'block'};
+  const key=fields[target.id];
+  if(key) studentDraft={...(studentDraft || currentStudent() || {}),[key]:target.value};
+  if(target.id==='sheet-endpoint') sheetEndpointDraft=target.value;
+}
+document.addEventListener('input',e=>rememberFormField(e.target));
 document.addEventListener('change',e=>{
-  if(e.target.id==='practice-set'){activeSet=Number(e.target.value);render();}
+  rememberFormField(e.target);
+  if(e.target.id==='practice-set'){const n=Number(e.target.value);if(Number.isInteger(n)&&choicesForFilter().includes(n)){activeSet=n;render();}}
   if(['header-language','profile-language'].includes(e.target.id)){lang=e.target.value==='ta'?1:0;persist();render();}
 });
 document.querySelector('#menu-button').onclick=()=>document.querySelector('#menu-dialog').showModal();

@@ -87,3 +87,7 @@ Website code changes require a new Vercel deployment. The PWA checks for a new v
 Profile offers `/downloads/Kalvimurasu-NMMS-v1.2.apk` (Android v1.2, version code 3). This is a signed debug/test build for direct installation, with 25,000 bundled questions and the current design. The APK is served as a static attachment by Vercel and is excluded from PWA offline pre-caching. iPhone users use Safari → Share → Add to Home Screen.
 
 For future APK updates: increment Android versionCode/versionName, sync and build the app, verify the signed APK and bundled assets, copy it into `downloads/` under a new versioned filename, then update the download card and matching Vercel header. Keep the same signing certificate so existing installations can upgrade.
+
+## Google Play release preparation
+
+The current app is branded NMMS Spark. See [release/README.md](release/README.md) for the signed AAB workflow, signing setup, privacy/audience blockers, store listing draft and required device testing. Run `npm run check:play` for the technical preflight, then `npm run bundle:android` after configuring a private upload key. The old debug APK is not a Play release.

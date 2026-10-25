@@ -89,6 +89,18 @@ async function main() {
   assert.equal(noSpace.run("saveStudent({name:'Student',school:'School',className:'8'})"),false);
   assert.equal(noSpace.run('view'),'onboarding','Do not enter app if student registration was not saved');
 
+  const observer=boot();
+  observer.run("window.StudentTracking.onChange=()=>{throw new Error('Render failed')}");
+  assert.doesNotThrow(()=>observer.run("window.StudentTracking.saveProfile({name:'Student',school:'School',className:'8'})"));
+  assert.equal(observer.run('currentStudent().name'),'Student','UI callback errors must not undo successful saves');
+  observer.context.navigator.onLine=true;
+  observer.context.window.fetch=async(_address,options)=>({ok:true,text:async()=>JSON.stringify({schemaVersion:1,ok:true,acceptedIds:JSON.parse(options.body).events.map(e=>e.id)})});
+  assert.equal(await observer.run('window.StudentTracking.flush()'),true);
+  assert.equal(observer.run('window.StudentTracking.status().busy'),false,'UI callback errors must not permanently lock uploads');
+  const beforeInvalid=observer.storage.get('kalvimurasu-student-v1');
+  assert.throws(()=>observer.run("window.StudentTracking.enqueueAttempt({studentId:currentStudent().id,trackingId:'bad-result-123',answers:[null],total:1,score:1,started:Date.now(),date:Date.now()},'Science',1)"),/Invalid practice/);
+  assert.equal(observer.storage.get('kalvimurasu-student-v1'),beforeInvalid,'Reject invalid results before poisoning the outbox');
+
   // Exercise the actual Apps Script write endpoint against in-memory worksheets.
   function sheet(name) {
     const rows=[];let maxRows=1;
@@ -122,6 +134,15 @@ async function main() {
   assert.equal(tabs.get('_Students').rows[1][1],'New Student Name');
   post([original]);
   assert.equal(tabs.get('_Students').rows[1][1],'New Student Name','Replayed old profile cannot undo a newer edit');
+  const located={...profile,id:'profile-location-0001',student:{...profile.student,district:'Madurai',block:'Melur',updatedAt:Date.now()+1500}};
+  // Existing 17-column sheets migrate without changing historical values.
+  tabs.get('_Students').rows[0]=tabs.get('_Students').rows[0].slice(0,17);
+  assert.equal(post([located]).ok,true);
+  assert.equal(tabs.get('_Students').rows[0][17],'district');
+  assert.equal(tabs.get('_Students').rows[1][17],'Madurai');
+  assert.equal(tabs.get('_Students').rows[1][18],'Melur');
+  post([original]);
+  assert.equal(tabs.get('_Students').rows[1][18],'Melur','An older result cannot erase the saved block');
   const malicious={...profile,id:'profile-formula-0001',student:{...profile.student,name:'=HYPERLINK("https://example.com")',updatedAt:Date.now()+2000}};
   assert.equal(post([malicious]).ok,true);
   assert(tabs.get('_Students').rows[1][1].startsWith("'="),'Student text cannot execute a spreadsheet formula');
